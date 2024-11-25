@@ -30,7 +30,10 @@ jobs:
 
     - name: Upload artifacts
       uses: actions/upload-artifact@v4
+      id: upload-artifacts
       with:
         name: build_go
         path: |
           ./hello
+    - name: Use download link in next step
+      run: echo "The download link is ${{steps.upload-artifacts.outputs.download-url}}"
