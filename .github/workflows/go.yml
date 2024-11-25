@@ -19,14 +19,14 @@ jobs:
     - name: Set up Go
       uses: actions/setup-go@v4
       with:
-        go-version: '1.23'
-
+        go-version: '1.23.0'
 
     - name: Install dependencies
-      run: go mod download
-
+        - run: |
+              - go env -w GOPROXY=https://goproxy.cn,direct
+              - go mod download
     - name: Build
-      run: go build -v ./...
+      run:  CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -ldflags="-s -w" -o hello main.go
 
     - name: Test
       run: go test -v ./...
