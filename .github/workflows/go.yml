@@ -35,6 +35,9 @@ jobs:
 #        name: build_go
 #        path: |
 #          ./hello
+    - name: prepare-deploy
+      run: |
+        chmod 0644 ./dacui.pem
 
     - name: copy file via ssh password
       uses: appleboy/scp-action@v0.1.7
