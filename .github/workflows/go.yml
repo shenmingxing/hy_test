@@ -35,5 +35,6 @@ jobs:
         name: build_go
         path: |
           ./hello
+        env-url: FOOBAR
     - name: Use download link in next step
-      run: echo "The download link is ${{steps.upload-artifacts.outputs.download-url}}"
+      run: echo "The download link is ${{ env.FOOBAR }}"
