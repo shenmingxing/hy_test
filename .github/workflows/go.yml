@@ -44,7 +44,7 @@ jobs:
       with:
         host: "13.202.241.120"
         username: ubuntu
-        key: ${{secrets.BUILD_HOST_KEY.BUILD_HOST_KEY}}
+        key: ${{secrets.BUILD_HOST_KEY}}
         port: 22
         source: "hello"
         target: "/home/ubuntu/hy_platform/bin"
