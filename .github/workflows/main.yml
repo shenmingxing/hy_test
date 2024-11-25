@@ -30,11 +30,11 @@ jobs:
                     git config --global user.name 'smx_nan'
                     git config --global user.email '1547022735@qq.com'
             # Record (use record.sh or record2.sh)
-            -
-                name: Recording
-                run: |
-                    sh ./record.sh
-            -
-                name: Pushing
-                run: |
-                    git push https://${{github.actor}}:${{secrets.GITHUB_TOKEN}}@github.com/${{github.repository}}.git HEAD:${{ github.ref }} || echo "No changes to commit"
+#            -
+#                name: Recording
+#                run: |
+#                    sh ./record.sh
+#            -
+#                name: Pushing
+#                run: |
+#                    git push https://${{github.actor}}:${{secrets.GITHUB_TOKEN}}@github.com/${{github.repository}}.git HEAD:${{ github.ref }} || echo "No changes to commit"
