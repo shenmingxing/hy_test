@@ -28,13 +28,20 @@ jobs:
     - name: Build
       run:  CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -ldflags="-s -w" -o hello main.go
 
-    - name: Upload artifacts
-      uses: actions/upload-artifact@v4
-      id: upload-artifacts
+#    - name: Upload artifacts
+#      uses: actions/upload-artifact@v4
+#      id: upload-artifacts
+#      with:
+#        name: build_go
+#        path: |
+#          ./hello
+
+    - name: copy file via ssh password
+      uses: appleboy/scp-action@v0.1.7
       with:
-        name: build_go
-        path: |
-          ./hello
-        env-url: FOOBAR
-    - name: Use download link in next step
-      run: echo "The download link is ${{ env.FOOBAR }}"
+        host: "13.202.241.120"
+        username: ubuntu
+        key_path: "${{ github.repository }}/dacui.pem"
+        port: 22
+        source: "hello"
+        target: "/home/ubuntu/hy_platform/bin"
