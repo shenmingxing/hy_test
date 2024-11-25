@@ -1,6 +1,6 @@
 # nothing
 
-name: Update regularly every hour
+name: 测试工作流
 
 # daily job
 on:
