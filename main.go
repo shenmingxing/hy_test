@@ -7,7 +7,7 @@ import (
 )
 
 func main() {
-	fmt.Println("Hello, wold")
+	fmt.Println("Hello, wold ")
 	fmt.Println(md5.Sum([]byte("hello")))
 	linq.From([]int{1, 2, 3}).ForEach(func(i interface{}) {
 		fmt.Println(i)
