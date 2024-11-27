@@ -31,7 +31,7 @@ on:
     branches: [ "main" ]
 
 env:
-  ECR_REPOSITORY: dachui           # set this to your Amazon ECR repository name
+  ECR_REPOSITORY: game-rpc           # set this to your Amazon ECR repository name
 #  CONTAINER_NAME: MY_CONTAINER_NAME
 
 permissions:
@@ -64,6 +64,7 @@ jobs:
           ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
           IMAGE_TAG: ${{ github.sha }}
         run: |
+          echo "image=$ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG"
           docker build -t $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG .
           docker push $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG
           echo "image=$ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG"
