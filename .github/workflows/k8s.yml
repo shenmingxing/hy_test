@@ -30,8 +30,8 @@ on:
   push:
     branches: [ "main" ]
 
-env:
-  ECR_REPOSITORY: game-rpc           # set this to your Amazon ECR repository name
+#env:
+#  ECR_REPOSITORY: game-rpc           # set this to your Amazon ECR repository name
 
 permissions:
   contents: read
@@ -69,7 +69,7 @@ jobs:
           echo "image=$ECR_REGISTRY/game-rpc:$IMAGE_TAG"
           
 
-#          Retrieve an authentication token and authenticate your Docker client to your registry. Use the AWS CLI:
+#          Retrieve an authentication token and authenticate  your Docker client to your registry. Use the AWS CLI:
 
 #  aws ecr get-login-password --region ap-southeast-1 | docker login --username AWS --password-stdin 891377347582.dkr.ecr.ap-southeast-1.amazonaws.com
 #注意: 如果您在使用 AWS CLI 时遇到错误，请确保您已安装最新版本的 AWS CLI 和 Docker。
