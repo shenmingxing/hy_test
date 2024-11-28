@@ -30,7 +30,7 @@ on:
   push:
     branches: [ "main" ]
 
-env:
+#env:
 #  ECR_REPOSITORY: game-rpc           # set this to your Amazon ECR repository name
 #  CONTAINER_NAME: MY_CONTAINER_NAME
 
