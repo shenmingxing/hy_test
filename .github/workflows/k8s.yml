@@ -54,6 +54,18 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
+      - name: Get branch names
+        id: branch-names
+        uses: tj-actions/branch-names@v8
+        with:
+          strip_tag_prefix: v # Optionally strip the leading `v` from the tag.
+
+      - name: current branch name
+        run: |
+          echo "${{ steps.branch-names.outputs.current_branch }}"
+        # Outputs: "main" the default branch.
+
+
       - name: Running on the default branch.
         if: steps.branch-names.outputs.is_default == 'true'
         run: |
@@ -71,17 +83,7 @@ jobs:
           echo "${{ steps.branch-names.outputs.ref_branch }}"
         #  Outputs: "main"
 
-      - name: Default branch name
-        run: |
-          echo "${{ steps.branch-names.outputs.default_branch }}"
-        # Outputs: "main" the default branch.
 
-
-      - name: Get branch names
-        id: branch-names
-        uses: tj-actions/branch-names@v8
-        with:
-          strip_tag_prefix: v # Optionally strip the leading `v` from the tag.
 
       - name: Running on a tag branch.
         if: steps.branch-names.outputs.is_tag == 'true'
