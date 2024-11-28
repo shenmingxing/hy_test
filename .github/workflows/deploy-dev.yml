@@ -26,6 +26,7 @@ jobs:
         id: get_version
         run: |
           VERSION=${${{github.ref}}/refs\/tags\//}
+          echo "$$VERSION ======>"
           echo "version=$VERSION" >> $GITHUB_OUTPUT
 
       - name: Echo Version
