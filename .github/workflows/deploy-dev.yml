@@ -16,32 +16,27 @@ jobs:
       - name: 检出代码
         uses: actions/checkout@v4
 
-      - name: Get tag version
-        run: |
-          version=$(echo ${{ github.ref }} | cut -d '-' -f 2)
-          echo "The extracted version is: $version"
-
-#          tag_name=$(echo $GITHIGNORE_REF_TYPE | cut -d '/' -f 3)
-#          echo "The tag version is: $tag_name"
-#          echo "${{ github.ref }} | cut -d '-' -f 2"
-        
-
-#      - name: 配置 AWS credentials
-#        uses: aws-actions/configure-aws-credentials@v4
-#        with:
-#          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
-#          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-#          aws-region: ${{ secrets.AWS_REGION }}
-#      - name: 登录到 Amazon ECR
-#        id: login-ecr
-#        uses: aws-actions/amazon-ecr-login@v2
-#
-#      - name: 打包镜像推送到AWS ECR仓库
-#        id: build-image
-#        env:
-#          ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
-#          IMAGE_TAG: ${{ github.sha }}
+#      - name: Get tag version
 #        run: |
-#          echo "image=$ECR_REGISTRY/game-rpc:$IMAGE_TAG"
-#          docker build -t $ECR_REGISTRY/game-rpc:$IMAGE_TAG .
-#          docker push $ECR_REGISTRY/game-rpc:$IMAGE_TAG
+#          version=$(echo ${{ github.ref }} | cut -d '-' -f 2)
+#          echo "The extracted version is: $version"
+
+      - name: 配置 AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ secrets.AWS_REGION }}
+      - name: 登录到 Amazon ECR
+        id: login-ecr
+        uses: aws-actions/amazon-ecr-login@v2
+
+      - name: 打包镜像推送到AWS ECR仓库
+        id: build-image
+        env:
+          ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
+          IMAGE_TAG: $(echo ${{ github.ref }} | cut -d '-' -f 2)
+        run: |
+          echo "image=$ECR_REGISTRY/game-rpc:$IMAGE_TAG"
+          docker build -t $ECR_REGISTRY/game-rpc:$IMAGE_TAG .
+          docker push $ECR_REGISTRY/game-rpc:$IMAGE_TAG
