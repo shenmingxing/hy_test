@@ -30,9 +30,8 @@ on:
   push:
     branches: [ "main" ]
 
-#env:
-#  ECR_REPOSITORY: game-rpc           # set this to your Amazon ECR repository name
-#  CONTAINER_NAME: MY_CONTAINER_NAME
+env:
+  ECR_REPOSITORY: game-rpc           # set this to your Amazon ECR repository name
 
 permissions:
   contents: read
@@ -64,10 +63,25 @@ jobs:
           ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
           IMAGE_TAG: ${{ github.sha }}
         run: |
-          echo "===========> $IMAGE_TAG"
-          docker build -t game-rpc:$IMAGE_TAG .     
+          echo "image=$ECR_REGISTRY/game-rpc:$IMAGE_TAG"
+          docker build -t $ECR_REGISTRY/game-rpc:$IMAGE_TAG .          
           docker push $ECR_REGISTRY/game-rpc:$IMAGE_TAG
+          echo "image=$ECR_REGISTRY/game-rpc:$IMAGE_TAG"
           
+
+#          Retrieve an authentication token and authenticate your Docker client to your registry. Use the AWS CLI:
+
+#  aws ecr get-login-password --region ap-southeast-1 | docker login --username AWS --password-stdin 891377347582.dkr.ecr.ap-southeast-1.amazonaws.com
+#注意: 如果您在使用 AWS CLI 时遇到错误，请确保您已安装最新版本的 AWS CLI 和 Docker。
+#使用以下命令生成 Docker 映像。有关从头生成 Docker 文件的信息，请参阅说明 此处 。如果您已生成映像，则可跳过此步骤:
+#
+#  docker build -t game-rpc .
+#生成完成后，标记您的映像，以便将映像推送到此存储库:
+#
+#  docker tag game-rpc:latest 891377347582.dkr.ecr.ap-southeast-1.amazonaws.com/game-rpc:latest
+#运行以下命令将此映像推送到您新创建的 AWS 存储库:
+#
+#  docker push 891377347582.dkr.ecr.ap-southeast-1.amazonaws.com/game-rpc:latest
 
 
 #      - name: Fill in the new image ID in the Amazon ECS task definition
