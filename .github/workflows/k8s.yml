@@ -54,6 +54,28 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
+      - name: Running on the default branch.
+        if: steps.branch-names.outputs.is_default == 'true'
+        run: |
+          echo "Running on default: ${{ steps.branch-names.outputs.current_branch }}"
+        # Outputs: "Running on default: main".
+
+      - name: Running on the default branch (i.e non tag based branch).
+        if: steps.branch-names.outputs.is_tag == 'false' && steps.branch-names.outputs.is_default == 'true'
+        run: |
+          echo "Running on branch: ${{ steps.branch-names.outputs.current_branch }}"
+        # Outputs: "Running on branch: main".
+
+      - name: Get Ref brach name
+        run: |
+          echo "${{ steps.branch-names.outputs.ref_branch }}"
+        #  Outputs: "main"
+
+      - name: Default branch name
+        run: |
+          echo "${{ steps.branch-names.outputs.default_branch }}"
+        # Outputs: "main" the default branch.
+
 
       - name: Get branch names
         id: branch-names
