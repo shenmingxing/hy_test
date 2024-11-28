@@ -11,7 +11,7 @@ permissions:
 jobs:
   deploy_to_test:
     runs-on: ubuntu-latest
-    if: contains('dev', github.ref)
+    if: contains(github.ref,'dev')
     steps:
       - name: 检出代码
         uses: actions/checkout@v4
