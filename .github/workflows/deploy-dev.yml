@@ -16,42 +16,32 @@ jobs:
       - name: 检出代码
         uses: actions/checkout@v4
 
-#      - name: 获取tag
-#        id: get_version
-#        run: echo ::set-output name=VERSION::${GITHUB_REF/refs\/tags\//}
-
-
-
       - name: 获取tag版本
         id: get_version
         run: |
           TAG_REF=${{ github.ref }}
           VERSION=`echo ${TAG_REF}|awk -F/ '{print $3}'`
-          echo "$VERSION ======>"
-          echo "version=$VERSION" >> $GITHUB_OUTPUT
 
-      - name: Echo Version
+      - name: 打印tag版本
         run: echo ${{ steps.get_version.outputs.VERSION }}
 
+      - name: 配置 AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ secrets.AWS_REGION }}
 
+      - name: 登录到 Amazon ECR
+        id: login-ecr
+        uses: aws-actions/amazon-ecr-login@v2
 
-#      - name: 配置 AWS credentials
-#        uses: aws-actions/configure-aws-credentials@v4
-#        with:
-#          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
-#          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-#          aws-region: ${{ secrets.AWS_REGION }}
-
-#      - name: 登录到 Amazon ECR
-#        id: login-ecr
-#        uses: aws-actions/amazon-ecr-login@v2
-#
-#      - name: 打包镜像推送到AWS ECR仓库
-#        id: build-image
-#        env:
-#          ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
-#          IMAGE_TAG: ${{ steps.get_version.outputs.VERSION }}
-#        run: |
-#          echo "image=$ECR_REGISTRY/game-rpc:$IMAGE_TAG"
-#          docker build -t $ECR_REGISTRY/game-rpc:$IMAGE_TAG .
-#          docker push $ECR_REGISTRY/game-rpc:$IMAGE_TAG
+      - name: 打包镜像推送到AWS ECR仓库
+        id: build-image
+        env:
+          ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
+          IMAGE_TAG: ${{ steps.get_version.outputs.VERSION }}
+        run: |
+          echo "image=$ECR_REGISTRY/game-rpc:$IMAGE_TAG"
+          docker build -t $ECR_REGISTRY/game-rpc:$IMAGE_TAG .
+          docker push $ECR_REGISTRY/game-rpc:$IMAGE_TAG
