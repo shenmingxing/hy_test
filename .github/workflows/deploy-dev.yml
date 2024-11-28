@@ -16,12 +16,21 @@ jobs:
       - name: 检出代码
         uses: actions/checkout@v4
 
-      - name: 获取tag
+#      - name: 获取tag
+#        id: get_version
+#        run: echo ::set-output name=VERSION::${GITHUB_REF/refs\/tags\//}
+
+
+
+      - name: 获取tag版本
         id: get_version
-        run: echo ::set-output name=VERSION::${GITHUB_REF/refs\/tags\//}
+        run: |
+          VERSION=${${{github.ref}}/refs\/tags\//}
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
 
       - name: Echo Version
         run: echo ${{ steps.get_version.outputs.VERSION }}
+
 
 
 #      - name: 配置 AWS credentials
