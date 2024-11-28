@@ -32,11 +32,11 @@ on:
       - dev-v1.*
       - prod-v1.*
 
-#    branches:
-#      - prod
-#      - dev
-#      - test
-#      - main
+    branches:
+      - prod
+      - dev
+      - test
+      - main
 
 
 
