@@ -25,8 +25,8 @@ jobs:
       - name: 获取tag版本
         id: get_version
         run: |
-          VERSION=${${{github.ref}}/refs\/tags\//}
-          echo "$$VERSION ======>"
+          VERSION=$(echo ${{ github.ref }} | sed's/refs/tags\///g')
+          echo "$VERSION ======>"
           echo "version=$VERSION" >> $GITHUB_OUTPUT
 
       - name: Echo Version
