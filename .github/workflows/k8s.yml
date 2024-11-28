@@ -58,7 +58,7 @@ jobs:
         run: |
           tag_name=$(echo $GITHUB_REF | cut -d '/' -f 3)
           branch=$(echo $GITHUB_REF | cut -d '/' -f 2)
-           echo "The tag name is: $tag_name, branch is : $branch"
+           echo "github_ref : $GITHUB_REF The tag name is: $tag_name, branch is : $branch"
           if [ "${tag_name:0:8}" == "release-" ] && [ $branch == "main" ]; then
               echo "This is a release tag on main branch."
               # 执行部署到生产环境的操作
