@@ -27,15 +27,14 @@
 name: Deploy to Amazon ECS
 on:
   push:
-    # Sequence of patterns matched against refs/heads
+    tags:
+      - v1.*
     branches:
       - prod
       - dev
       - test
       - main
-    # Sequence of patterns matched against refs/tags
-    tags:
-      - v1.*
+
 
 permissions:
   contents: read
