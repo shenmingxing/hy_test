@@ -18,7 +18,7 @@ jobs:
 
       - name: 获取tag
         id: get_version
-        run: echo ::set-output name=VERSION::${GITHUB_REF/refs\/tags\/dev\//}
+        run: echo ::set-output name=VERSION::${${{github.ref}}/refs\/tags\//}
 
       - name: 配置 AWS credentials
         uses: aws-actions/configure-aws-credentials@v4
