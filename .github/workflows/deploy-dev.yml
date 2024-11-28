@@ -11,13 +11,10 @@ permissions:
 jobs:
   deploy_to_test:
     runs-on: ubuntu-latest
-#    if:
-#      contains('
-#      refs/heads/dev
-#      refs/heads/staging
-#      refs/heads/production
-#      ', github.ref)
-    #if: ${{ github.ref == 'refs/tags/*'  }}
+    if:
+      contains('
+      refs/tags/dev
+      ', github.ref)
     steps:
       - name: 检出代码
         uses: actions/checkout@v4
