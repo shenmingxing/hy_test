@@ -11,10 +11,7 @@ permissions:
 jobs:
   deploy_to_test:
     runs-on: ubuntu-latest
-    if:
-      contains('
-      refs/tags/dev
-      ', github.ref)
+    if: contains('dev', github.ref)
     steps:
       - name: 检出代码
         uses: actions/checkout@v4
@@ -24,6 +21,7 @@ jobs:
           tag_name=$(echo $GITHIGNORE_REF_TYPE | cut -d '/' -f 3)
           echo "The tag version is: $tag_name"
           echo "${{ github.ref }}"
+        
 
 #      - name: 配置 AWS credentials
 #        uses: aws-actions/configure-aws-credentials@v4
