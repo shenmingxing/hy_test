@@ -54,19 +54,47 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Check tag name and branch
+
+      - name: Get branch names
+        id: branch-names
+        uses: tj-actions/branch-names@v8
+        with:
+          strip_tag_prefix: v # Optionally strip the leading `v` from the tag.
+
+      - name: Running on a tag branch.
+        if: steps.branch-names.outputs.is_tag == 'true'
         run: |
-          tag_name=$(echo $GITHUB_REF | cut -d '/' -f 3)
-          branch=$(echo $GITHUB_REF | cut -d '/' -f 2)
-           echo "github_ref : $GITHUB_REF The tag name is: $tag_name, branch is : $branch"
-          if [ "${tag_name:0:8}" == "release-" ] && [ $branch == "main" ]; then
-              echo "This is a release tag on main branch."
-              # 执行部署到生产环境的操作
-              echo "Deploying to production environment"
-              # 这里可添加具体的部署命令，如scp、rsync等用于将构建好的项目传输到目标环境
-          else
-              echo "This is not a release tag on main branch."
-          fi
+          echo "Running on: ${{ steps.branch-names.outputs.tag }}"
+        # Outputs: "Running on: 0.0.1".
+
+      - name: Get the current tag
+        if: steps.branch-names.outputs.is_tag == 'true'  # Replaces: startsWith(github.ref, 'refs/tags/')
+        run: |
+          echo "${{ steps.branch-names.outputs.tag }}"
+        # Outputs: "0.0.1"
+
+#      - name:  Prints the current branch name
+#        run: echo "${GITHUB_REF##*/}"
+#        env:
+#          GITHUB_BRANCH: ${{ github.ref }}
+
+
+
+
+
+#      - name: Check tag name and branch
+#        run: |
+#          tag_name=$(echo $GITHUB_REF | cut -d '/' -f 3)
+#          branch=$(echo $GITHUB_REF | cut -d '/' -f 2)
+#           echo "github_ref : $GITHUB_REF, The tag name is: $tag_name, branch is : $branch"
+#          if [ "${tag_name:0:8}" == "release-" ] && [ $branch == "main" ]; then
+#              echo "This is a release tag on main branch."
+#              # 执行部署到生产环境的操作
+#              echo "Deploying to production environment"
+#              # 这里可添加具体的部署命令，如scp、rsync等用于将构建好的项目传输到目标环境
+#          else
+#              echo "This is not a release tag on main branch."
+#          fi
 
       - name: Configure AWS credentials
         uses: aws-actions/configure-aws-credentials@v4
