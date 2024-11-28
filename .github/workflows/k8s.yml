@@ -66,7 +66,7 @@ jobs:
               # 这里可添加具体的部署命令，如scp、rsync等用于将构建好的项目传输到目标环境
           else
               echo "This is not a release tag on main branch."
-          end
+          fi
 
       - name: Configure AWS credentials
         uses: aws-actions/configure-aws-credentials@v4
