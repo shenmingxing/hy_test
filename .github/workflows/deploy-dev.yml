@@ -16,10 +16,9 @@ jobs:
       - name: 检出代码
         uses: actions/checkout@v4
 
-#      - name: Get tag version
-#        run: |
-#          version=$(echo ${{ github.ref }} | cut -d '-' -f 2)
-#          echo "The extracted version is: $version"
+      - name: 获取tag
+        id: get_version
+        run: echo ::set-output name=VERSION::${GITHUB_REF/refs\/tags\/dev\//}
 
       - name: 配置 AWS credentials
         uses: aws-actions/configure-aws-credentials@v4
@@ -27,6 +26,7 @@ jobs:
           aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
           aws-region: ${{ secrets.AWS_REGION }}
+
       - name: 登录到 Amazon ECR
         id: login-ecr
         uses: aws-actions/amazon-ecr-login@v2
@@ -35,7 +35,7 @@ jobs:
         id: build-image
         env:
           ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
-          IMAGE_TAG: $(echo ${{ github.ref }} | cut -d '-' -f 2)
+          IMAGE_TAG: ${{ steps.get_version.outputs.VERSION }}
         run: |
           echo "image=$ECR_REGISTRY/game-rpc:$IMAGE_TAG"
           docker build -t $ECR_REGISTRY/game-rpc:$IMAGE_TAG .
