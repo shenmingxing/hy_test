@@ -20,6 +20,7 @@ jobs:
         run: |
           tag_name=$(echo $GITHIGNORE_REF_TYPE | cut -d '/' -f 3)
           echo "The tag version is: $tag_name"
+          echo ""
 
 #      - name: 配置 AWS credentials
 #        uses: aws-actions/configure-aws-credentials@v4
