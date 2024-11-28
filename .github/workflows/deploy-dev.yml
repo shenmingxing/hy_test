@@ -17,7 +17,7 @@ jobs:
 #      refs/heads/staging
 #      refs/heads/production
 #      ', github.ref)
-    if: ${{ github.ref == 'refs/tags/*'  }}
+    #if: ${{ github.ref == 'refs/tags/*'  }}
     steps:
       - name: 检出代码
         uses: actions/checkout@v4
@@ -26,7 +26,7 @@ jobs:
         run: |
           tag_name=$(echo $GITHIGNORE_REF_TYPE | cut -d '/' -f 3)
           echo "The tag version is: $tag_name"
-          echo ""
+          echo "${{ github.ref }}"
 
 #      - name: 配置 AWS credentials
 #        uses: aws-actions/configure-aws-credentials@v4
