@@ -25,7 +25,7 @@ jobs:
       - name: 获取tag版本
         id: get_version
         run: |
-          TAG_REF: ${{ github.ref }}
+          TAG_REF=${{ github.ref }}
           VERSION=`echo ${TAG_REF}|awk -F/ '{print $3}'`
           echo "$VERSION ======>"
           echo "version=$VERSION" >> $GITHUB_OUTPUT
