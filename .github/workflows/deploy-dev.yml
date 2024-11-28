@@ -18,8 +18,7 @@ jobs:
 
       - name: Get tag version
         run: |
-          tag_ref= "${{ github.ref }}"
-          version=$(echo $tag_ref | cut -d '-' -f 2)
+          version=$(echo ${{ github.ref }} | cut -d '-' -f 2)
           echo "The extracted version is: $version"
 
 #          tag_name=$(echo $GITHIGNORE_REF_TYPE | cut -d '/' -f 3)
