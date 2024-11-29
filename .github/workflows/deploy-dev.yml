@@ -8,6 +8,20 @@ on:
     branches: [ "main" ]
 #  pull_request:
 #    branches: [ "main" ]
+  workflow_dispatch:
+    inputs:
+      parameter1:
+        description: "输入参数1"
+        required: true
+        default: "默认值1"
+      parameter2:
+        description: "输入参数2"
+        required: true
+        default: "默认值2"
+      parameter3:
+        description: "输入参数3"
+        required: true
+        default: "默认值3"
 
 jobs:
 
@@ -28,34 +42,24 @@ jobs:
     - name: Build
       run:  CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -ldflags="-s -w" -o hello main.go
 
-#    - name: Upload artifacts
-#      uses: actions/upload-artifact@v4
-#      id: upload-artifacts
+
+#    - name: copy file via ssh password
+#      uses: appleboy/scp-action@v0.1.7
 #      with:
-#        name: build_go
-#        path: |
-#          ./hello
-#    - name: prepare-deploy
-#      run: |
-#        chmod 0644 ./dacui.pem
-
-    - name: copy file via ssh password
-      uses: appleboy/scp-action@v0.1.7
-      with:
-        host: "13.202.241.120"
-        username: ubuntu
-        key: ${{secrets.BUILD_HOST_KEY}}
-        port: 22
-        source: "hello"
-        target: "/home/ubuntu/hy_platform/bin"
-
-
-
-    - name: file commands
-      uses: appleboy/ssh-action@v1.2.0
-      with:
-        host: "13.202.241.120"
-        username: ubuntu
-        key: ${{secrets.BUILD_HOST_KEY}}
-        port: 22
-        script_path: record.sh
+#        host: "13.202.241.120"
+#        username: ubuntu
+#        key: ${{secrets.BUILD_HOST_KEY}}
+#        port: 22
+#        source: "hello"
+#        target: "/home/ubuntu/hy_platform/bin"
+#
+#
+#
+#    - name: file commands
+#      uses: appleboy/ssh-action@v1.2.0
+#      with:
+#        host: "13.202.241.120"
+#        username: ubuntu
+#        key: ${{secrets.BUILD_HOST_KEY}}
+#        port: 22
+#        script_path: scripts/script.sh
