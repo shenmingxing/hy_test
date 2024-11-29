@@ -1,56 +1,61 @@
+# This workflow will build a golang project
+# For more information see: https://docs.github.com/en/actions/automating-builds-and-tests/building-and-testing-go
 
-name: 部署到 Amazon EKS开发环境
+name: Go
+
 on:
   push:
-    tags:
-      - dev-v1.*
-
-permissions:
-  contents: read
+    branches: [ "main" ]
+#  pull_request:
+#    branches: [ "main" ]
 
 jobs:
-  deploy_to_test:
+
+  build:
     runs-on: ubuntu-latest
-    if: contains(github.ref,'dev')
     steps:
-      - name: 检出代码
-        uses: actions/checkout@v4
+    - uses: actions/checkout@v4
 
-#      - name: 获取tag
-#        id: get_version
-#        run: echo ::set-output name=VERSION::${GITHUB_REF/refs\/tags\//}
+    - name: Set up Go
+      uses: actions/setup-go@v4
+      with:
+        go-version: '1.23.0'
+
+    - name: Install dependencies
+      run: |
+        go env -w GOPROXY=https://goproxy.cn,direct
+        go mod download
+    - name: Build
+      run:  CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -ldflags="-s -w" -o hello main.go
+
+#    - name: Upload artifacts
+#      uses: actions/upload-artifact@v4
+#      id: upload-artifacts
+#      with:
+#        name: build_go
+#        path: |
+#          ./hello
+    - name: prepare-deploy
+      run: |
+        chmod 0644 ./dacui.pem
+
+    - name: copy file via ssh password
+      uses: appleboy/scp-action@v0.1.7
+      with:
+        host: "13.202.241.120"
+        username: ubuntu
+        key: ${{secrets.BUILD_HOST_KEY}}
+        port: 22
+        source: "hello"
+        target: "/home/ubuntu/hy_platform/bin"
 
 
 
-      - name: 获取tag版本
-        id: get_version
-        run: |
-          TAG_REF=${{ github.ref }}
-          VERSION=`echo ${TAG_REF}|awk -F/ '{print $3}'`
-          echo "VERSION=$VERSION" >> $GITHUB_OUTPUT
-
-      - name: 输出tag版本
-        run: echo ${{ steps.get_version.outputs.VERSION }}
-
-
-
-      - name: 配置 AWS credentials
-        uses: aws-actions/configure-aws-credentials@v4
-        with:
-          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
-          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-          aws-region: ${{ secrets.AWS_REGION }}
-
-      - name: 登录到 Amazon ECR
-        id: login-ecr
-        uses: aws-actions/amazon-ecr-login@v2
-
-      - name: 打包镜像推送到AWS ECR仓库
-        id: build-image
-        env:
-          ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
-          IMAGE_TAG: ${{ steps.get_version.outputs.VERSION }}
-        run: |
-          echo "image=$ECR_REGISTRY/game-rpc:$IMAGE_TAG"
-          docker build -t $ECR_REGISTRY/game-rpc:$IMAGE_TAG .
-          docker push $ECR_REGISTRY/game-rpc:$IMAGE_TAG
+    - name: file commands
+      uses: appleboy/ssh-action@v1.2.0
+      with:
+        host: "13.202.241.120"
+        username: ubuntu
+        key: ${{secrets.BUILD_HOST_KEY}}
+        port: 22
+        script_path: record.sh
