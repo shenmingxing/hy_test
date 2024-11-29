@@ -11,7 +11,7 @@ on:
   workflow_dispatch:
     inputs:
       parameter1:
-        description: "输入参数1"
+        description:  "指定编译服务，默认编译所有服务[admin-api,admin-rpc,stat-rpc,admin-task @ hall-api,mq-record,mq-usercenter,rpc-act,rpc-usercenter,rpc-game,rpc-datacenter,task-record,task-dbcreator]"
         required: true
         default: "默认值1"
       parameter2:
