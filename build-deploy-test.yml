@@ -1,0 +1,112 @@
+name: aws云测试环境编译打包部署
+on:
+  workflow_dispatch:
+    inputs:
+      service_name:
+        description: "测试服务器手动打包"
+        required: true
+        default: "all"
+
+jobs:
+  build-rpc:
+    name: "aws云测试环境rpc编译打包部署 "
+    runs-on:
+      labels: larger-runner
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: 初始化go环境
+        uses: actions/setup-go@v4
+        with:
+          go-version: '1.23.0'
+
+      - name: 安装依赖
+        run: |
+          go mod download
+      - name: 编译所有项目 #可以输入参数并执行指定项目
+        run: |
+               mkdir bin #创建bin目录存放编译后的文件
+               make  all-rpc -j12
+               chmod 777 bin/*
+               ls bin/*
+      - name: 配置 AWS服务器SSH连接证书
+        run: |
+          mkdir -p ~/.ssh/
+          echo "$SSH_KEY" > ~/.ssh/id_ed25519
+          chmod 600 ~/.ssh/id_ed25519
+          cat >>~/.ssh/config <<END
+          Host aws-jump
+            HostName $SSH_HOST
+            User $SSH_USER
+            IdentityFile ~/.ssh/id_ed25519
+            StrictHostKeyChecking no
+          END
+        env:
+          SSH_USER: ${{ secrets.SCP_AWS_SSH_RPC_USER }}
+          SSH_KEY: ${{ secrets.TEST_SCP_AWS_SSH_KEY }}
+          SSH_HOST: ${{ secrets.SCP_AWS_SSH_RPC_HOST }}
+
+      - name: 复制成品到 AWS RPC 服务器
+        working-directory: .
+        run: |
+          ls bin/*
+          ssh  aws-jump  "sudo rm -rf ${{secrets.BUILD_HOST_HY_PLAT_PATH}}/build/bin/*"
+          ssh  aws-jump  "sudo rm -rf ${{secrets.BUILD_HOST_HY_PLAT_PATH}}/build/config/*"
+          scp  bin/*  aws-jump:${{secrets.BUILD_HOST_HY_PLAT_PATH}}/build/bin
+          scp  conf_test/*   aws-jump:${{secrets.BUILD_HOST_HY_PLAT_PATH}}/build/config
+
+      - name: 部署RPC机器
+        working-directory: .
+        run: |
+          ssh  aws-jump "sudo sh ${{secrets.BUILD_HOST_HY_PLAT_PATH}}/build.sh"
+
+  build-api:
+      name: "aws云测试环境api编译打包部署 "
+      runs-on:
+        labels: larger-runner
+      steps:
+        - uses: actions/checkout@v4
+
+        - name: 初始化go环境
+          uses: actions/setup-go@v4
+          with:
+            go-version: '1.23.0'
+
+        - name: 安装依赖
+          run: |
+            go mod download
+        - name: 编译所有项目 #可以输入参数并执行指定项目
+          run: |
+            mkdir bin #创建bin目录存放编译后的文件
+            make  all-api -j2
+            chmod 777 bin/*
+            ls bin/*
+        - name: 配置 AWS服务器SSH连接证书
+          run: |
+            mkdir -p ~/.ssh/
+            echo "$SSH_KEY" > ~/.ssh/id_ed25519
+            chmod 600 ~/.ssh/id_ed25519
+            cat >>~/.ssh/config <<END
+            Host aws-jump
+              HostName $SSH_HOST
+              User $SSH_USER
+              IdentityFile ~/.ssh/id_ed25519
+              StrictHostKeyChecking no
+            END
+          env:
+            SSH_USER: ${{ secrets.SCP_AWS_SSH_API_USER }}
+            SSH_KEY: ${{ secrets.TEST_SCP_AWS_SSH_KEY }}
+            SSH_HOST: ${{ secrets.SCP_AWS_SSH_API_HOST }}
+
+        - name: 复制成品到 AWS API 服务器
+          working-directory: .
+          run: |
+            ls bin/*
+            ssh  aws-jump  "sudo rm -rf ${{secrets.BUILD_HOST_HY_PLAT_PATH}}/build/bin/*"
+            ssh  aws-jump  "sudo rm -rf ${{secrets.BUILD_HOST_HY_PLAT_PATH}}/build/config/*"
+            scp  bin/*  aws-jump:${{secrets.BUILD_HOST_HY_PLAT_PATH}}/build/bin
+            scp  conf_test/*   aws-jump:${{secrets.BUILD_HOST_HY_PLAT_PATH}}/build/config
+        - name: 部署API机器
+          working-directory: .
+          run: |
+            ssh  aws-jump "sudo sh ${{secrets.BUILD_HOST_HY_PLAT_PATH}}/build.sh"

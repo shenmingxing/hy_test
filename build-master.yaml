@@ -1,0 +1,982 @@
+name: 构建master分支
+on:
+  push:
+    branches:
+      - master
+jobs:
+  build-admin-api:
+    name: "构建 admin-api"
+    runs-on: ubuntu-latest
+    steps:
+      - name: 下载代码
+        uses: actions/checkout@v4
+
+      - name: 安装 golang v1.23
+        uses: actions/setup-go@v5
+        with:
+          go-version: '1.23'
+
+      - name: 安装 public 依赖
+        working-directory: ./public
+        run: go mod download
+
+      - name: 安装 hygames 依赖
+        working-directory: ./hyadmin
+        run: go mod download
+
+      - name: 编译
+        working-directory: .
+        run: |
+          BRANCH=$(git symbolic-ref --short -q HEAD)
+          COMMIT=$(git rev-parse --verify HEAD)
+          NOW=$(date '+%FT%T%z')
+          RUN_USER=$(git log -1 --pretty=format:'%an')
+          RUN_NUMBER=${{ github.run_number }}          
+          CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -ldflags="-X 'public/common/build.AppName=admin-api' \
+          -X 'public/common/build.Branch=$BRANCH' \
+          -X 'public/common/build.Commit=$COMMIT' \
+          -X 'public/common/build.Author=$RUN_USER' \
+          -X 'public/common/build.Date=$NOW' \
+          -X 'public/common/build.Version=$RUN_NUMBER' \
+          -X 'public/common/build.RunNumber=$RUN_NUMBER'" \
+          -o ./output/admin-api ./hyadmin/app/api/admin/admin.go
+      - name: 配置 AWS服务器SSH连接证书
+        run: |
+          mkdir -p ~/.ssh/
+          echo "$SSH_KEY" > ~/.ssh/id_ed25519
+          chmod 600 ~/.ssh/id_ed25519
+          cat >>~/.ssh/config <<END
+          Host aws-jump
+            HostName $SSH_HOST
+            User $SSH_USER
+            IdentityFile ~/.ssh/id_ed25519
+            StrictHostKeyChecking no
+          END
+        env:
+          SSH_USER: ${{ secrets.SCP_AWS_SSH_USER }}
+          SSH_KEY: ${{ secrets.SCP_AWS_SSH_KEY }}
+          SSH_HOST: ${{ secrets.SCP_AWS_SSH_HOST }}
+
+      - name: 提前创建目录
+        run: ssh aws-jump "mkdir -p /mnt/efs/build_master/${{ github.run_number }}/bin;mkdir -p /mnt/efs/build_master/${{ github.run_number }}/config"
+
+      - name: 复制成品到 AWS 服务器
+        working-directory: .
+        run: |
+          scp ./conf/admin-api.yaml  aws-jump:/mnt/efs/build_master/${{ github.run_number }}/config/admin-api.yaml       
+          scp ./output/admin-api aws-jump:/mnt/efs/build_master/${{ github.run_number }}/bin/admin-api
+
+      - name: 发送打包群消息
+        uses: appleboy/telegram-action@master
+        with:
+          to: ${{ secrets.TELEGRAM_TO }}
+          token: ${{ secrets.TELEGRAM_TOKEN }}
+          message: admin-api服务打包消息：${{ job.status }}
+
+  build-hall-api:
+    name: "构建 hall-api"
+    runs-on: ubuntu-latest
+    steps:
+      - name: 下载代码
+        uses: actions/checkout@v4
+
+      - name: 安装 golang v1.23
+        uses: actions/setup-go@v5
+        with:
+          go-version: '1.23'
+
+      - name: 安装 public 依赖
+        working-directory: ./public
+        run: go mod download
+
+      - name: 安装 hygames 依赖
+        working-directory: ./hyadmin
+        run: go mod download
+
+      - name: 编译
+        working-directory: .
+        run: |
+          BRANCH=$(git symbolic-ref --short -q HEAD)
+          COMMIT=$(git rev-parse --verify HEAD)
+          NOW=$(date '+%FT%T%z')
+          RUN_USER=$(git log -1 --pretty=format:'%an')
+          RUN_NUMBER=${{ github.run_number }}          
+          CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -ldflags="-X 'public/common/build.AppName=hall-api' \
+          -X 'public/common/build.Branch=$BRANCH' \
+          -X 'public/common/build.Commit=$COMMIT' \
+          -X 'public/common/build.Author=$RUN_USER' \
+          -X 'public/common/build.Date=$NOW' \
+          -X 'public/common/build.Version=$RUN_NUMBER' \
+          -X 'public/common/build.RunNumber=$RUN_NUMBER'" \
+          -o ./output/hall-api ./hygames/app/api/hall/hall.go
+      - name: 配置 AWS服务器SSH连接证书
+        run: |
+          mkdir -p ~/.ssh/
+          echo "$SSH_KEY" > ~/.ssh/id_ed25519
+          chmod 600 ~/.ssh/id_ed25519
+          cat >>~/.ssh/config <<END
+          Host aws-jump
+            HostName $SSH_HOST
+            User $SSH_USER
+            IdentityFile ~/.ssh/id_ed25519
+            StrictHostKeyChecking no
+          END
+        env:
+          SSH_USER: ${{ secrets.SCP_AWS_SSH_USER }}
+          SSH_KEY: ${{ secrets.SCP_AWS_SSH_KEY }}
+          SSH_HOST: ${{ secrets.SCP_AWS_SSH_HOST }}
+
+      - name: 提前创建目录
+        run: ssh aws-jump "mkdir -p /mnt/efs/build_master/${{ github.run_number }}/bin;mkdir -p /mnt/efs/build_master/${{ github.run_number }}/config"
+
+      - name: 复制成品到 AWS 服务器
+        working-directory: .
+        run: |
+          scp ./conf/hall-api.yaml  aws-jump:/mnt/efs/build_master/${{ github.run_number }}/config/hall-api.yaml       
+          scp ./output/hall-api aws-jump:/mnt/efs/build_master/${{ github.run_number }}/bin/hall-api
+
+      - name: 发送打包群消息
+        uses: appleboy/telegram-action@master
+        with:
+          to: ${{ secrets.TELEGRAM_TO }}
+          token: ${{ secrets.TELEGRAM_TOKEN }}
+          message: hall-api服务打包消息：${{ job.status }}
+
+  build-mq-record:
+    name: "构建 record-mq"
+    runs-on: ubuntu-latest
+    steps:
+      - name: 下载代码
+        uses: actions/checkout@v4
+
+      - name: 安装 golang v1.23
+        uses: actions/setup-go@v5
+        with:
+          go-version: '1.23'
+
+      - name: 安装 public 依赖
+        working-directory: ./public
+        run: go mod download
+
+      - name: 安装 hygames 依赖
+        working-directory: ./hygames
+        run: go mod download
+
+      - name: 编译
+        working-directory: .
+        run: |
+          BRANCH=$(git symbolic-ref --short -q HEAD)
+          COMMIT=$(git rev-parse --verify HEAD)
+          NOW=$(date '+%FT%T%z')
+          RUN_USER=$(git log -1 --pretty=format:'%an')
+          RUN_NUMBER=${{ github.run_number }}          
+          CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -ldflags="-X 'public/common/build.AppName=record-mq' \
+          -X 'public/common/build.Branch=$BRANCH' \
+          -X 'public/common/build.Commit=$COMMIT' \
+          -X 'public/common/build.Author=$RUN_USER' \
+          -X 'public/common/build.Date=$NOW' \
+          -X 'public/common/build.Version=$RUN_NUMBER' \
+          -X 'public/common/build.RunNumber=$RUN_NUMBER'" \
+          -o ./output/record-mq  ./hygames/app/mq/record/record.go
+
+
+      - name: 配置 AWS服务器SSH连接证书
+        run: |
+          mkdir -p ~/.ssh/
+          echo "$SSH_KEY" > ~/.ssh/id_ed25519
+          chmod 600 ~/.ssh/id_ed25519
+          cat >>~/.ssh/config <<END
+          Host aws-jump
+            HostName $SSH_HOST
+            User $SSH_USER
+            IdentityFile ~/.ssh/id_ed25519
+            StrictHostKeyChecking no
+          END
+        env:
+          SSH_USER: ${{ secrets.SCP_AWS_SSH_USER }}
+          SSH_KEY: ${{ secrets.SCP_AWS_SSH_KEY }}
+          SSH_HOST: ${{ secrets.SCP_AWS_SSH_HOST }}
+
+      - name: 提前创建目录
+        run: ssh aws-jump "mkdir -p /mnt/efs/build_master/${{ github.run_number }}/bin;mkdir -p /mnt/efs/build_master/${{ github.run_number }}/config"
+
+
+      - name: 复制成品到 AWS 服务器
+        working-directory: .
+        run: |
+          scp ./conf/record-mq.yaml  aws-jump:/mnt/efs/build_master/${{ github.run_number }}/config/record-mq.yaml       
+          scp ./output/record-mq aws-jump:/mnt/efs/build_master/${{ github.run_number }}/bin/record-mq
+
+      - name: 发送打包群消息
+        uses: appleboy/telegram-action@master
+        with:
+          to: ${{ secrets.TELEGRAM_TO }}
+          token: ${{ secrets.TELEGRAM_TOKEN }}
+          message: record-mq服务打包消息：${{ job.status }}
+
+
+  build-mq-usercenter:
+    name: "构建 usercenter-mq"
+    runs-on: ubuntu-latest
+    steps:
+      - name: 下载代码
+        uses: actions/checkout@v4
+
+      - name: 安装 golang v1.23
+        uses: actions/setup-go@v5
+        with:
+          go-version: '1.23'
+
+      - name: 安装 public 依赖
+        working-directory: ./public
+        run: go mod download
+
+      - name: 安装 hygames 依赖
+        working-directory: ./hygames
+        run: go mod download
+
+      - name: 编译
+        working-directory: .
+        run: |
+          BRANCH=$(git symbolic-ref --short -q HEAD)
+          COMMIT=$(git rev-parse --verify HEAD)
+          NOW=$(date '+%FT%T%z')
+          RUN_USER=$(git log -1 --pretty=format:'%an')
+          RUN_NUMBER=${{ github.run_number }}          
+          CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -ldflags="-X 'public/common/build.AppName=usercenter-mq' \
+          -X 'public/common/build.Branch=$BRANCH' \
+          -X 'public/common/build.Commit=$COMMIT' \
+          -X 'public/common/build.Author=$RUN_USER' \
+          -X 'public/common/build.Date=$NOW' \
+          -X 'public/common/build.Version=$RUN_NUMBER' \
+          -X 'public/common/build.RunNumber=$RUN_NUMBER'" \
+          -o ./output/usercenter-mq ./hygames/app/mq/usercenter/usercenter.go
+
+      - name: 配置 AWS服务器SSH连接证书
+        run: |
+          mkdir -p ~/.ssh/
+          echo "$SSH_KEY" > ~/.ssh/id_ed25519
+          chmod 600 ~/.ssh/id_ed25519
+          cat >>~/.ssh/config <<END
+          Host aws-jump
+            HostName $SSH_HOST
+            User $SSH_USER
+            IdentityFile ~/.ssh/id_ed25519
+            StrictHostKeyChecking no
+          END
+        env:
+          SSH_USER: ${{ secrets.SCP_AWS_SSH_USER }}
+          SSH_KEY: ${{ secrets.SCP_AWS_SSH_KEY }}
+          SSH_HOST: ${{ secrets.SCP_AWS_SSH_HOST }}
+
+      - name: 提前创建目录
+        run: ssh aws-jump "mkdir -p /mnt/efs/build_master/${{ github.run_number }}/bin;mkdir -p /mnt/efs/build_master/${{ github.run_number }}/config"
+
+      - name: 复制成品到 AWS 服务器
+        working-directory: .
+        run: |
+          scp ./conf/usercenter-mq.yaml  aws-jump:/mnt/efs/build_master/${{ github.run_number }}/config/usercenter-mq.yaml       
+          scp ./output/usercenter-mq aws-jump:/mnt/efs/build_master/${{ github.run_number }}/bin/usercenter-mq
+
+      - name: 发送打包群消息
+        uses: appleboy/telegram-action@master
+        with:
+          to: ${{ secrets.TELEGRAM_TO }}
+          token: ${{ secrets.TELEGRAM_TOKEN }}
+          message: usercenter-mq服务打包消息：${{ job.status }}
+
+  build-rpc-act:
+    name: "构建 act-rpc"
+    runs-on: ubuntu-latest
+    steps:
+      - name: 下载代码
+        uses: actions/checkout@v4
+
+      - name: 安装 golang v1.23
+        uses: actions/setup-go@v5
+        with:
+          go-version: '1.23'
+
+      - name: 安装 public 依赖
+        working-directory: ./public
+        run: go mod download
+
+      - name: 安装 hygames 依赖
+        working-directory: ./hygames
+        run: go mod download
+
+      - name: 编译
+        working-directory: .
+        run: |
+          BRANCH=$(git symbolic-ref --short -q HEAD)
+          COMMIT=$(git rev-parse --verify HEAD)
+          NOW=$(date '+%FT%T%z')
+          RUN_USER=$(git log -1 --pretty=format:'%an')
+          RUN_NUMBER=${{ github.run_number }}          
+          CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -ldflags="-X 'public/common/build.AppName=act-rpc' \
+          -X 'public/common/build.Branch=$BRANCH' \
+          -X 'public/common/build.Commit=$COMMIT' \
+          -X 'public/common/build.Author=$RUN_USER' \
+          -X 'public/common/build.Date=$NOW' \
+          -X 'public/common/build.Version=$RUN_NUMBER' \
+          -X 'public/common/build.RunNumber=$RUN_NUMBER'" \
+          -o ./output/act-rpc ./hygames/app/rpc/act/act.go
+      - name: 配置 AWS服务器SSH连接证书
+        run: |
+          mkdir -p ~/.ssh/
+          echo "$SSH_KEY" > ~/.ssh/id_ed25519
+          chmod 600 ~/.ssh/id_ed25519
+          cat >>~/.ssh/config <<END
+          Host aws-jump
+            HostName $SSH_HOST
+            User $SSH_USER
+            IdentityFile ~/.ssh/id_ed25519
+            StrictHostKeyChecking no
+          END
+        env:
+          SSH_USER: ${{ secrets.SCP_AWS_SSH_USER }}
+          SSH_KEY: ${{ secrets.SCP_AWS_SSH_KEY }}
+          SSH_HOST: ${{ secrets.SCP_AWS_SSH_HOST }}
+
+      - name: 提前创建目录
+        run: ssh aws-jump "mkdir -p /mnt/efs/build_master/${{ github.run_number }}/bin;mkdir -p /mnt/efs/build_master/${{ github.run_number }}/config"
+
+      - name: 复制成品到 AWS 服务器
+        working-directory: .
+        run: |
+          scp ./conf/act-rpc.yaml  aws-jump:/mnt/efs/build_master/${{ github.run_number }}/config/act-rpc.yaml       
+          scp ./output/act-rpc aws-jump:/mnt/efs/build_master/${{ github.run_number }}/bin/act-rpc
+
+
+      - name: 发送打包群消息
+        uses: appleboy/telegram-action@master
+        with:
+          to: ${{ secrets.TELEGRAM_TO }}
+          token: ${{ secrets.TELEGRAM_TOKEN }}
+          message: act-rpc服务打包消息：${{ job.status }}
+
+  build-rpc-admin:
+    name: "构建 admin-rpc"
+    runs-on: ubuntu-latest
+    steps:
+      - name: 下载代码
+        uses: actions/checkout@v4
+
+      - name: 安装 golang v1.23
+        uses: actions/setup-go@v5
+        with:
+          go-version: '1.23'
+
+      - name: 安装 public 依赖
+        working-directory: ./public
+        run: go mod download
+
+      - name: 安装 hygames 依赖
+        working-directory: ./hyadmin
+        run: go mod download
+
+      - name: 编译
+        working-directory: .
+        run: |
+          BRANCH=$(git symbolic-ref --short -q HEAD)
+          COMMIT=$(git rev-parse --verify HEAD)
+          NOW=$(date '+%FT%T%z')
+          RUN_USER=$(git log -1 --pretty=format:'%an')
+          RUN_NUMBER=${{ github.run_number }}          
+          CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -ldflags="-X 'public/common/build.AppName=admin-rpc' \
+          -X 'public/common/build.Branch=$BRANCH' \
+          -X 'public/common/build.Commit=$COMMIT' \
+          -X 'public/common/build.Author=$RUN_USER' \
+          -X 'public/common/build.Date=$NOW' \
+          -X 'public/common/build.Version=$RUN_NUMBER' \
+          -X 'public/common/build.RunNumber=$RUN_NUMBER'" \
+          -o ./output/admin-rpc ./hyadmin/app/rpc/admin/admin.go
+      - name: 配置 AWS服务器SSH连接证书
+        run: |
+          mkdir -p ~/.ssh/
+          echo "$SSH_KEY" > ~/.ssh/id_ed25519
+          chmod 600 ~/.ssh/id_ed25519
+          cat >>~/.ssh/config <<END
+          Host aws-jump
+            HostName $SSH_HOST
+            User $SSH_USER
+            IdentityFile ~/.ssh/id_ed25519
+            StrictHostKeyChecking no
+          END
+        env:
+          SSH_USER: ${{ secrets.SCP_AWS_SSH_USER }}
+          SSH_KEY: ${{ secrets.SCP_AWS_SSH_KEY }}
+          SSH_HOST: ${{ secrets.SCP_AWS_SSH_HOST }}
+
+      - name: 提前创建目录
+        run: ssh aws-jump "mkdir -p /mnt/efs/build_master/${{ github.run_number }}/bin;mkdir -p /mnt/efs/build_master/${{ github.run_number }}/config"
+
+      - name: 复制成品到 AWS 服务器
+        working-directory: .
+        run: |
+          scp ./conf/admin-rpc.yaml  aws-jump:/mnt/efs/build_master/${{ github.run_number }}/config/admin-rpc.yaml       
+          scp ./output/admin-rpc aws-jump:/mnt/efs/build_master/${{ github.run_number }}/bin/admin-rpc
+
+      - name: 发送打包群消息
+        uses: appleboy/telegram-action@master
+        with:
+          to: ${{ secrets.TELEGRAM_TO }}
+          token: ${{ secrets.TELEGRAM_TOKEN }}
+          message: admin-rpc服务打包消息：${{ job.status }}
+
+  build-rpc-datacenter:
+    name: "构建 datacenter-rpc"
+    runs-on: ubuntu-latest
+    steps:
+      - name: 下载代码
+        uses: actions/checkout@v4
+
+      - name: 安装 golang v1.23
+        uses: actions/setup-go@v5
+        with:
+          go-version: '1.23'
+
+      - name: 安装 public 依赖
+        working-directory: ./public
+        run: go mod download
+
+      - name: 安装 hygames 依赖
+        working-directory: ./hygames
+        run: go mod download
+
+      - name: 编译
+        working-directory: .
+        run: |
+          BRANCH=$(git symbolic-ref --short -q HEAD)
+          COMMIT=$(git rev-parse --verify HEAD)
+          NOW=$(date '+%FT%T%z')
+          RUN_USER=$(git log -1 --pretty=format:'%an')
+          RUN_NUMBER=${{ github.run_number }}          
+          CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -ldflags="-X 'public/common/build.AppName=datacenter-rpc' \
+          -X 'public/common/build.Branch=$BRANCH' \
+          -X 'public/common/build.Commit=$COMMIT' \
+          -X 'public/common/build.Author=$RUN_USER' \
+          -X 'public/common/build.Date=$NOW' \
+          -X 'public/common/build.Version=$RUN_NUMBER' \
+          -X 'public/common/build.RunNumber=$RUN_NUMBER'" \
+          -o ./output/datacenter-rpc ./hygames/app/rpc/datacenter/datacenter.go
+      - name: 配置 AWS服务器SSH连接证书
+        run: |
+          mkdir -p ~/.ssh/
+          echo "$SSH_KEY" > ~/.ssh/id_ed25519
+          chmod 600 ~/.ssh/id_ed25519
+          cat >>~/.ssh/config <<END
+          Host aws-jump
+            HostName $SSH_HOST
+            User $SSH_USER
+            IdentityFile ~/.ssh/id_ed25519
+            StrictHostKeyChecking no
+          END
+        env:
+          SSH_USER: ${{ secrets.SCP_AWS_SSH_USER }}
+          SSH_KEY: ${{ secrets.SCP_AWS_SSH_KEY }}
+          SSH_HOST: ${{ secrets.SCP_AWS_SSH_HOST }}
+
+      - name: 提前创建目录
+        run: ssh aws-jump "mkdir -p /mnt/efs/build_master/${{ github.run_number }}/bin;mkdir -p /mnt/efs/build_master/${{ github.run_number }}/config"
+
+      - name: 复制成品到 AWS 服务器
+        working-directory: .
+        run: |
+          scp ./conf/datacenter-rpc.yaml  aws-jump:/mnt/efs/build_master/${{ github.run_number }}/config/datacenter-rpc.yaml       
+          scp ./output/datacenter-rpc aws-jump:/mnt/efs/build_master/${{ github.run_number }}/bin/datacenter-rpc
+
+
+      - name: 发送打包群消息
+        uses: appleboy/telegram-action@master
+        with:
+          to: ${{ secrets.TELEGRAM_TO }}
+          token: ${{ secrets.TELEGRAM_TOKEN }}
+          message: datacenter-rpc服务打包消息：${{ job.status }}
+
+  build-rpc-game:
+    name: "构建 game-rpc"
+    runs-on: ubuntu-latest
+    steps:
+      - name: 下载代码
+        uses: actions/checkout@v4
+
+      - name: 安装 golang v1.23
+        uses: actions/setup-go@v5
+        with:
+          go-version: '1.23'
+
+      - name: 安装 public 依赖
+        working-directory: ./public
+        run: go mod download
+
+      - name: 安装 hygames 依赖
+        working-directory: ./hygames
+        run: go mod download
+
+      - name: 编译
+        working-directory: .
+        run: |
+          BRANCH=$(git symbolic-ref --short -q HEAD)
+          COMMIT=$(git rev-parse --verify HEAD)
+          NOW=$(date '+%FT%T%z')
+          RUN_USER=$(git log -1 --pretty=format:'%an')
+          RUN_NUMBER=${{ github.run_number }}          
+          CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -ldflags="-X 'public/common/build.AppName=game-rpc' \
+          -X 'public/common/build.Branch=$BRANCH' \
+          -X 'public/common/build.Commit=$COMMIT' \
+          -X 'public/common/build.Author=$RUN_USER' \
+          -X 'public/common/build.Date=$NOW' \
+          -X 'public/common/build.Version=$RUN_NUMBER' \
+          -X 'public/common/build.RunNumber=$RUN_NUMBER'" \
+          -o ./output/game-rpc ./hygames/app/rpc/game/game.go
+      - name: 配置 AWS服务器SSH连接证书
+        run: |
+          mkdir -p ~/.ssh/
+          echo "$SSH_KEY" > ~/.ssh/id_ed25519
+          chmod 600 ~/.ssh/id_ed25519
+          cat >>~/.ssh/config <<END
+          Host aws-jump
+            HostName $SSH_HOST
+            User $SSH_USER
+            IdentityFile ~/.ssh/id_ed25519
+            StrictHostKeyChecking no
+          END
+        env:
+          SSH_USER: ${{ secrets.SCP_AWS_SSH_USER }}
+          SSH_KEY: ${{ secrets.SCP_AWS_SSH_KEY }}
+          SSH_HOST: ${{ secrets.SCP_AWS_SSH_HOST }}
+
+      - name: 提前创建目录
+        run: ssh aws-jump "mkdir -p /mnt/efs/build_master/${{ github.run_number }}/bin;mkdir -p /mnt/efs/build_master/${{ github.run_number }}/config"
+
+      - name: 复制成品到 AWS 服务器
+        working-directory: .
+        run: |
+          scp ./conf/game-rpc.yaml  aws-jump:/mnt/efs/build_master/${{ github.run_number }}/config/game-rpc.yaml       
+          scp ./output/game-rpc aws-jump:/mnt/efs/build_master/${{ github.run_number }}/bin/game-rpc
+
+      - name: 发送打包群消息
+        uses: appleboy/telegram-action@master
+        with:
+          to: ${{ secrets.TELEGRAM_TO }}
+          token: ${{ secrets.TELEGRAM_TOKEN }}
+          message: game-rpc服务打包消息：${{ job.status }}
+
+  build-rpc-stat:
+    name: "构建 stat-rpc"
+    runs-on: ubuntu-latest
+    steps:
+      - name: 下载代码
+        uses: actions/checkout@v4
+
+      - name: 安装 golang v1.23
+        uses: actions/setup-go@v5
+        with:
+          go-version: '1.23'
+
+      - name: 安装 public 依赖
+        working-directory: ./public
+        run: go mod download
+
+      - name: 安装 hyadmin 依赖
+        working-directory: ./hyadmin
+        run: go mod download
+
+      - name: 编译
+        working-directory: .
+        run: |
+          BRANCH=$(git symbolic-ref --short -q HEAD)
+          COMMIT=$(git rev-parse --verify HEAD)
+          NOW=$(date '+%FT%T%z')
+          RUN_USER=$(git log -1 --pretty=format:'%an')
+          RUN_NUMBER=${{ github.run_number }}          
+          CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -ldflags="-X 'public/common/build.AppName=stat-rpc' \
+          -X 'public/common/build.Branch=$BRANCH' \
+          -X 'public/common/build.Commit=$COMMIT' \
+          -X 'public/common/build.Author=$RUN_USER' \
+          -X 'public/common/build.Date=$NOW' \
+          -X 'public/common/build.Version=$RUN_NUMBER' \
+          -X 'public/common/build.RunNumber=$RUN_NUMBER'" \
+           -o ./output/stat-rpc ./hyadmin/app/rpc/stat/stat.go
+      - name: 配置 AWS服务器SSH连接证书
+        run: |
+          mkdir -p ~/.ssh/
+          echo "$SSH_KEY" > ~/.ssh/id_ed25519
+          chmod 600 ~/.ssh/id_ed25519
+          cat >>~/.ssh/config <<END
+          Host aws-jump
+            HostName $SSH_HOST
+            User $SSH_USER
+            IdentityFile ~/.ssh/id_ed25519
+            StrictHostKeyChecking no
+          END
+        env:
+          SSH_USER: ${{ secrets.SCP_AWS_SSH_USER }}
+          SSH_KEY: ${{ secrets.SCP_AWS_SSH_KEY }}
+          SSH_HOST: ${{ secrets.SCP_AWS_SSH_HOST }}
+
+      - name: 提前创建目录
+        run: ssh aws-jump "mkdir -p /mnt/efs/build_master/${{ github.run_number }}/bin;mkdir -p /mnt/efs/build_master/${{ github.run_number }}/config"
+
+      - name: 复制成品到 AWS 服务器
+        working-directory: .
+        run: |
+          scp ./conf/stat-rpc.yaml  aws-jump:/mnt/efs/build_master/${{ github.run_number }}/config/stat-rpc.yaml       
+          scp ./output/stat-rpc aws-jump:/mnt/efs/build_master/${{ github.run_number }}/bin/stat-rpc
+
+      - name: 发送打包群消息
+        uses: appleboy/telegram-action@master
+        with:
+          to: ${{ secrets.TELEGRAM_TO }}
+          token: ${{ secrets.TELEGRAM_TOKEN }}
+          message: stat-rpc服务打包消息：${{ job.status }}
+
+  build-rpc-usercenter:
+    name: "构建 usercenter-rpc"
+    runs-on: ubuntu-latest
+    steps:
+      - name: 下载代码
+        uses: actions/checkout@v4
+
+      - name: 安装 golang v1.23
+        uses: actions/setup-go@v5
+        with:
+          go-version: '1.23'
+
+      - name: 安装 public 依赖
+        working-directory: ./public
+        run: go mod download
+
+      - name: 安装 hygames 依赖
+        working-directory: ./hygames
+        run: go mod download
+
+      - name: 编译
+        working-directory: .
+        run: |
+          BRANCH=$(git symbolic-ref --short -q HEAD)
+          COMMIT=$(git rev-parse --verify HEAD)
+          NOW=$(date '+%FT%T%z')
+          RUN_USER=$(git log -1 --pretty=format:'%an')
+          RUN_NUMBER=${{ github.run_number }}          
+          CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -ldflags="-X 'public/common/build.AppName=usercenter-rpc' \
+          -X 'public/common/build.Branch=$BRANCH' \
+          -X 'public/common/build.Commit=$COMMIT' \
+          -X 'public/common/build.Author=$RUN_USER' \
+          -X 'public/common/build.Date=$NOW' \
+          -X 'public/common/build.Version=$RUN_NUMBER' \
+          -X 'public/common/build.RunNumber=$RUN_NUMBER'" \
+          -o ./output/usercenter-rpc ./hygames/app/rpc/usercenter/usercenter.go
+      - name: 配置 AWS服务器SSH连接证书
+        run: |
+          mkdir -p ~/.ssh/
+          echo "$SSH_KEY" > ~/.ssh/id_ed25519
+          chmod 600 ~/.ssh/id_ed25519
+          cat >>~/.ssh/config <<END
+          Host aws-jump
+            HostName $SSH_HOST
+            User $SSH_USER
+            IdentityFile ~/.ssh/id_ed25519
+            StrictHostKeyChecking no
+          END
+        env:
+          SSH_USER: ${{ secrets.SCP_AWS_SSH_USER }}
+          SSH_KEY: ${{ secrets.SCP_AWS_SSH_KEY }}
+          SSH_HOST: ${{ secrets.SCP_AWS_SSH_HOST }}
+
+      - name: 提前创建目录
+        run: ssh aws-jump "mkdir -p /mnt/efs/build_master/${{ github.run_number }}/bin;mkdir -p /mnt/efs/build_master/${{ github.run_number }}/config"
+
+      - name: 复制成品到 AWS 服务器
+        working-directory: .
+        run: |
+          scp ./conf/usercenter-rpc.yaml  aws-jump:/mnt/efs/build_master/${{ github.run_number }}/config/usercenter-rpc.yaml       
+          scp ./output/usercenter-rpc aws-jump:/mnt/efs/build_master/${{ github.run_number }}/bin/usercenter-rpc
+
+      - name: 发送打包群消息
+        uses: appleboy/telegram-action@master
+        with:
+          to: ${{ secrets.TELEGRAM_TO }}
+          token: ${{ secrets.TELEGRAM_TOKEN }}
+          message: usercenter-rpc服务打包消息：${{ job.status }}
+  build-task-admin:
+    name: "构建 admin-task"
+    runs-on: ubuntu-latest
+    steps:
+      - name: 下载代码
+        uses: actions/checkout@v4
+
+      - name: 安装 golang v1.23
+        uses: actions/setup-go@v5
+        with:
+          go-version: '1.23'
+
+      - name: 安装 public 依赖
+        working-directory: ./public
+        run: go mod download
+
+      - name: 安装 hyadmin 依赖
+        working-directory: ./hyadmin
+        run: go mod download
+
+      - name: 编译
+        working-directory: .
+        run: |
+          BRANCH=$(git symbolic-ref --short -q HEAD)
+          COMMIT=$(git rev-parse --verify HEAD)
+          NOW=$(date '+%FT%T%z')
+          RUN_USER=$(git log -1 --pretty=format:'%an')
+          RUN_NUMBER=${{ github.run_number }}          
+          CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -ldflags="-X 'public/common/build.AppName=admin-task' \
+          -X 'public/common/build.Branch=$BRANCH' \
+          -X 'public/common/build.Commit=$COMMIT' \
+          -X 'public/common/build.Author=$RUN_USER' \
+          -X 'public/common/build.Date=$NOW' \
+          -X 'public/common/build.Version=$RUN_NUMBER' \
+          -X 'public/common/build.RunNumber=$RUN_NUMBER'" \
+          -o ./output/admin-task ./hyadmin/app/task/admin/admin.go
+      - name: 配置 AWS服务器SSH连接证书
+        run: |
+          mkdir -p ~/.ssh/
+          echo "$SSH_KEY" > ~/.ssh/id_ed25519
+          chmod 600 ~/.ssh/id_ed25519
+          cat >>~/.ssh/config <<END
+          Host aws-jump
+            HostName $SSH_HOST
+            User $SSH_USER
+            IdentityFile ~/.ssh/id_ed25519
+            StrictHostKeyChecking no
+          END
+        env:
+          SSH_USER: ${{ secrets.SCP_AWS_SSH_USER }}
+          SSH_KEY: ${{ secrets.SCP_AWS_SSH_KEY }}
+          SSH_HOST: ${{ secrets.SCP_AWS_SSH_HOST }}
+
+      - name: 提前创建目录
+        run: ssh aws-jump "mkdir -p /mnt/efs/build_master/${{ github.run_number }}/bin;mkdir -p /mnt/efs/build_master/${{ github.run_number }}/config"
+
+      - name: 复制成品到 AWS 服务器
+        working-directory: .
+        run: |
+          scp ./conf/admin-task.yaml  aws-jump:/mnt/efs/build_master/${{ github.run_number }}/config/admin-task.yaml     
+          scp ./output/admin-task aws-jump:/mnt/efs/build_master/${{ github.run_number }}/bin/admin-task
+
+      - name: 发送打包群消息
+        uses: appleboy/telegram-action@master
+        with:
+          to: ${{ secrets.TELEGRAM_TO }}
+          token: ${{ secrets.TELEGRAM_TOKEN }}
+          message: admin-task服务打包消息：${{ job.status }}
+
+  build-task-dbcreator:
+    name: "构建 dbcreator-task"
+    runs-on: ubuntu-latest
+    steps:
+      - name: 下载代码
+        uses: actions/checkout@v4
+
+      - name: 安装 golang v1.23
+        uses: actions/setup-go@v5
+        with:
+          go-version: '1.23'
+
+      - name: 安装 public 依赖
+        working-directory: ./public
+        run: go mod download
+
+      - name: 安装 hygames 依赖
+        working-directory: ./hygames
+        run: go mod download
+
+      - name: 编译
+        working-directory: .
+        run: |
+          BRANCH=$(git symbolic-ref --short -q HEAD)
+          COMMIT=$(git rev-parse --verify HEAD)
+          NOW=$(date '+%FT%T%z')
+          RUN_USER=$(git log -1 --pretty=format:'%an')
+          RUN_NUMBER=${{ github.run_number }}          
+          CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -ldflags="-X 'public/common/build.AppName=dbcreator-task' \
+          -X 'public/common/build.Branch=$BRANCH' \
+          -X 'public/common/build.Commit=$COMMIT' \
+          -X 'public/common/build.Author=$RUN_USER' \
+          -X 'public/common/build.Date=$NOW' \
+          -X 'public/common/build.Version=$RUN_NUMBER' \
+          -X 'public/common/build.RunNumber=$RUN_NUMBER'" \
+          -o ./output/dbcreator-task ./hygames/app/task/dbcreator/dbcreator.go
+      - name: 配置 AWS服务器SSH连接证书
+        run: |
+          mkdir -p ~/.ssh/
+          echo "$SSH_KEY" > ~/.ssh/id_ed25519
+          chmod 600 ~/.ssh/id_ed25519
+          cat >>~/.ssh/config <<END
+          Host aws-jump
+            HostName $SSH_HOST
+            User $SSH_USER
+            IdentityFile ~/.ssh/id_ed25519
+            StrictHostKeyChecking no
+          END
+        env:
+          SSH_USER: ${{ secrets.SCP_AWS_SSH_USER }}
+          SSH_KEY: ${{ secrets.SCP_AWS_SSH_KEY }}
+          SSH_HOST: ${{ secrets.SCP_AWS_SSH_HOST }}
+
+      - name: 提前创建目录
+        run: ssh aws-jump "mkdir -p /mnt/efs/build_master/${{ github.run_number }}/bin;mkdir -p /mnt/efs/build_master/${{ github.run_number }}/config"
+
+      - name: 复制成品到 AWS 服务器
+        working-directory: .
+        run: |
+          scp ./conf/dbcreator-task.yaml  aws-jump:/mnt/efs/build_master/${{ github.run_number }}/config/dbcreator-task.yaml     
+          scp ./output/dbcreator-task aws-jump:/mnt/efs/build_master/${{ github.run_number }}/bin/dbcreator-task
+
+
+      - name: 发送打包群消息
+        uses: appleboy/telegram-action@master
+        with:
+          to: ${{ secrets.TELEGRAM_TO }}
+          token: ${{ secrets.TELEGRAM_TOKEN }}
+          message: dbcreator-task服务打包消息：${{ job.status }}
+
+
+  build-task-record:
+    name: "构建 record-task"
+    runs-on: ubuntu-latest
+    steps:
+      - name: 下载代码
+        uses: actions/checkout@v4
+
+      - name: 安装 golang v1.23
+        uses: actions/setup-go@v5
+        with:
+          go-version: '1.23'
+
+      - name: 安装 public 依赖
+        working-directory: ./public
+        run: go mod download
+
+      - name: 安装 hygames 依赖
+        working-directory: ./hygames
+        run: go mod download
+
+      - name: 编译
+        working-directory: .
+        run: |
+          BRANCH=$(git symbolic-ref --short -q HEAD)
+          COMMIT=$(git rev-parse --verify HEAD)
+          NOW=$(date '+%FT%T%z')
+          RUN_USER=$(git log -1 --pretty=format:'%an')
+          RUN_NUMBER=${{ github.run_number }}          
+          CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -ldflags="-X 'public/common/build.AppName=record-task' \
+          -X 'public/common/build.Branch=$BRANCH' \
+          -X 'public/common/build.Commit=$COMMIT' \
+          -X 'public/common/build.Author=$RUN_USER' \
+          -X 'public/common/build.Date=$NOW' \
+          -X 'public/common/build.Version=$RUN_NUMBER' \
+          -X 'public/common/build.RunNumber=$RUN_NUMBER'" \
+          -o ./output/record-task ./hygames/app/task/record/record.go
+      - name: 配置 AWS服务器SSH连接证书
+        run: |
+          mkdir -p ~/.ssh/
+          echo "$SSH_KEY" > ~/.ssh/id_ed25519
+          chmod 600 ~/.ssh/id_ed25519
+          cat >>~/.ssh/config <<END
+          Host aws-jump
+            HostName $SSH_HOST
+            User $SSH_USER
+            IdentityFile ~/.ssh/id_ed25519
+            StrictHostKeyChecking no
+          END
+        env:
+          SSH_USER: ${{ secrets.SCP_AWS_SSH_USER }}
+          SSH_KEY: ${{ secrets.SCP_AWS_SSH_KEY }}
+          SSH_HOST: ${{ secrets.SCP_AWS_SSH_HOST }}
+
+      - name: 提前创建目录
+        run: ssh aws-jump "mkdir -p /mnt/efs/build_master/${{ github.run_number }}/bin;mkdir -p /mnt/efs/build_master/${{ github.run_number }}/config"
+
+      - name: 复制成品到 AWS 服务器
+        working-directory: .
+        run: |
+          scp ./conf/record-task.yaml  aws-jump:/mnt/efs/build_master/${{ github.run_number }}/config/record-task.yaml     
+          scp ./output/record-task aws-jump:/mnt/efs/build_master/${{ github.run_number }}/bin/record-task
+
+
+      - name: 发送打包群消息
+        uses: appleboy/telegram-action@master
+        with:
+          to: ${{ secrets.TELEGRAM_TO }}
+          token: ${{ secrets.TELEGRAM_TOKEN }}
+          message: record-task服务打包消息：${{ job.status }}
+
+
+  build-init-conf:
+    name: "构建 init-conf"
+    runs-on: ubuntu-latest
+    steps:
+      - name: 下载代码
+        uses: actions/checkout@v4
+
+      - name: 安装 golang v1.23
+        uses: actions/setup-go@v5
+        with:
+          go-version: '1.23'
+
+      - name: 安装 public 依赖
+        working-directory: ./public
+        run: go mod download
+
+      - name: 安装 hyinit 依赖
+        working-directory: ./hyinit
+        run: go mod download
+
+      - name: 编译
+        working-directory: .
+        run: |
+          BRANCH=$(git symbolic-ref --short -q HEAD)
+          COMMIT=$(git rev-parse --verify HEAD)
+          NOW=$(date '+%FT%T%z')
+          RUN_USER=$(git log -1 --pretty=format:'%an')
+          RUN_NUMBER=${{ github.run_number }}          
+          CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -ldflags="-X 'public/common/build.AppName=hy-init' \
+          -X 'public/common/build.Branch=$BRANCH' \
+          -X 'public/common/build.Commit=$COMMIT' \
+          -X 'public/common/build.Author=$RUN_USER' \
+          -X 'public/common/build.Date=$NOW' \
+          -X 'public/common/build.Version=$RUN_NUMBER' \
+          -X 'public/common/build.RunNumber=$RUN_NUMBER'" \
+          -o ./output/hy-init ./hyinit/hyinit.go
+      - name: 配置 AWS服务器SSH连接证书
+        run: |
+          mkdir -p ~/.ssh/
+          echo "$SSH_KEY" > ~/.ssh/id_ed25519
+          chmod 600 ~/.ssh/id_ed25519
+          cat >>~/.ssh/config <<END
+          Host aws-jump
+            HostName $SSH_HOST
+            User $SSH_USER
+            IdentityFile ~/.ssh/id_ed25519
+            StrictHostKeyChecking no
+          END
+        env:
+          SSH_USER: ${{ secrets.SCP_AWS_SSH_USER }}
+          SSH_KEY: ${{ secrets.SCP_AWS_SSH_KEY }}
+          SSH_HOST: ${{ secrets.SCP_AWS_SSH_HOST }}
+
+      - name: 提前创建目录
+        run: ssh aws-jump "mkdir -p /mnt/efs/build_master/${{ github.run_number }}/bin;mkdir -p /mnt/efs/build_master/${{ github.run_number }}/config"
+
+      - name: 复制成品到 AWS 服务器
+        working-directory: .
+        run: |
+          scp ./conf/admin-rpc.yaml  aws-jump:/mnt/efs/build_master/${{ github.run_number }}/config/hy-init.yaml     
+          scp ./output/hy-init aws-jump:/mnt/efs/build_master/${{ github.run_number }}/bin/hy-init
+
+
+      - name: 发送打包群消息
+        uses: appleboy/telegram-action@master
+        with:
+          to: ${{ secrets.TELEGRAM_TO }}
+          token: ${{ secrets.TELEGRAM_TOKEN }}
+          message: hy-init服务打包消息：${{ job.status }}

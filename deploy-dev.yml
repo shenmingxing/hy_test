@@ -1,0 +1,54 @@
+name: 更改dev运行版本号
+on:
+  workflow_dispatch:
+    inputs:
+      serviceType:
+        description: '选择dev分支服务'
+        required: true
+        default: 'all'
+        type: choice
+        options:
+          - all
+          - front
+          - backend
+          - act-rpc
+          - admin-api
+          - admin-rpc
+          - admin-task
+          - datacenter-rpc
+          - game-rpc
+          - hall-api
+          - record-mq
+          - record-task
+          - stat-rpc
+          - usercenter-mq
+          - usercenter-rpc
+      newVersion:
+        description: "版本号"
+        required: true
+        default: ""
+
+jobs:
+  ssh_to_server_and_deploy:
+    name: "更改dev运行版本号"
+    runs-on: ubuntu-latest
+    steps:
+      - name: 配置 AWS服务器SSH连接证书
+        run: |
+          mkdir -p ~/.ssh/
+          echo "$SSH_KEY" > ~/.ssh/id_ed25519
+          chmod 600 ~/.ssh/id_ed25519
+          cat >>~/.ssh/config <<END
+          Host aws-jump
+            HostName $SSH_HOST
+            User $SSH_USER
+            IdentityFile ~/.ssh/id_ed25519
+            StrictHostKeyChecking no
+          END
+        env:
+          SSH_USER: ${{ secrets.SCP_AWS_SSH_USER }}
+          SSH_KEY: ${{ secrets.SCP_AWS_SSH_KEY }}
+          SSH_HOST: ${{ secrets.SCP_AWS_SSH_HOST }}
+      
+      - name: 变改版本号
+        run: ssh aws-jump "sh /mnt/efs/update_dev.sh  ${{ github.event.inputs.newVersion }} ${{ github.event.inputs.serviceType }}" >> $GITHUB_STEP_SUMMARY
